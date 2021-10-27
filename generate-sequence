@@ -31,8 +31,10 @@ if __name__ == '__main__':
     parser.add_argument("--plot", action='store_true', default=False, help="plot the waveforms")
     args = parser.parse_args()
 
+    p = [0.45,0.45,0.1,0.0]
+
     t = np.linspace(0,args.samples/args.sample_rate,args.samples)
-    sequence = np.random.choice(["E","L","P","0"],size=args.num_qubits)
+    sequence = np.random.choice(["E","L","P","0"],size=args.num_qubits,p=p)
     y1 = np.zeros(args.samples)
     y2 = np.zeros(args.samples)
     y3 = np.zeros(args.samples)
@@ -67,7 +69,7 @@ if __name__ == '__main__':
         for i in range(len(y1)):
             f.write(",".join(["%.18g" % x for x in [y1[i],y2[i],y3[i],y4[i]]]) + '\n')
 
-    if args.plot
+    if args.plot:
         plt.plot(t,y1,label='Channel 1')
         plt.plot(t,y2,label='Channel 2')
         plt.plot(t,y3,label='Channel 3')
