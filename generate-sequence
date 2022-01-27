@@ -33,7 +33,13 @@ if __name__ == '__main__':
     parser.add_argument("--duty-cycle", type=float, default=0.5, help="fraction of pulse period that is high")
     parser.add_argument("--plot", action='store_true', default=False, help="plot the waveforms")
     parser.add_argument("--time-basis-probability", type=float, default=0.9, help="probability to output a time basis qubit")
+    parser.add_argument("--phase-levels", type=int, default=5, help="number of phase randomization levels")
+    parser.add_argument("--phase-scale", type=int, default=0.1, help="increase in output for each phase level")
     args = parser.parse_args()
+
+    if args.phase_levels*args.phase_scale > 1:
+        print("error: phase_levels*phase_scale > 1", file=sys.stderr)
+        sys.exit(1)
 
     t = np.linspace(0,args.samples/args.sample_rate,args.samples)
 
@@ -50,6 +56,8 @@ if __name__ == '__main__':
     else:
         sequence = np.random.choice(["E","L","P","0"],size=args.num_qubits,p=p)
 
+    phase_sequence = np.random.choice(np.arange(args.phase_levels),size=args.num_qubits)
+
     with smart_open(args.output_sequence) as f:
         f.write("".join(sequence) + '\n')
 
@@ -62,8 +70,7 @@ if __name__ == '__main__':
         bit = int(bit)
 
         if i < 100:
-            y3[i] = 1
-            y4[i] = 1
+            y1[i] = 1
 
         if bit >= len(sequence):
             continue
@@ -71,15 +78,17 @@ if __name__ == '__main__':
         if remainder > args.duty_cycle/args.frequency:
             continue
 
+        y2[i] = phase_sequence[bit]*args.phase_scale
+
         if sequence[bit] == 'E':
-            y1[i] = 1
-            y2[i] = 0
+            y3[i] = 1
+            y4[i] = 0
         elif sequence[bit] == 'L':
-            y1[i] = 0
-            y2[i] = 1
+            y3[i] = 0
+            y4[i] = 1
         elif sequence[bit] == 'P':
-            y1[i] = 0.5
-            y2[i] = 0.5
+            y3[i] = 0.5
+            y4[i] = 0.5
 
     with smart_open(args.output) as f:
         f.write("SampleRate = %.3f GHz\n" % args.sample_rate)
