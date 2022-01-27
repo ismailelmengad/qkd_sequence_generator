@@ -3,6 +3,7 @@ from __future__ import print_function, division
 import numpy as np
 import contextlib
 import matplotlib.pyplot as plt
+from itertools import cycle, islice
 
 @contextlib.contextmanager
 def smart_open(filename=None):
@@ -22,6 +23,7 @@ if __name__ == '__main__':
     import sys
 
     parser = argparse.ArgumentParser("generate QKD sequences for the AWG")
+    parser.add_argument("--sequence", nargs='+', default=None, help="manual sequence")
     parser.add_argument("-o", "--output", default="-", help="output file")
     parser.add_argument("--output-sequence", default="-", help="output sequence file")
     parser.add_argument("-s", "--sample-rate", type=float, default=85.75, help="sample rate in GHz")
@@ -37,7 +39,16 @@ if __name__ == '__main__':
 
     p = [args.time_basis_probability/2]*2 + [1-args.time_basis_probability] + [0.0]
 
-    sequence = np.random.choice(["E","L","P","0"],size=args.num_qubits,p=p)
+    if args.sequence is not None:
+        for qubit in args.sequence:
+            if qubit not in ["E","L","P","0"]:
+                print("error: don't understand qubit '%s'" % qubit, file=sys.stderr)
+                print("must be one of 'E', 'L', 'P', or '0'", file=sys.stderr)
+                sys.exit(1)
+
+        sequence = np.array(list(islice(cycle(args.sequence),None,args.num_qubits)),dtype='<U1')
+    else:
+        sequence = np.random.choice(["E","L","P","0"],size=args.num_qubits,p=p)
 
     with smart_open(args.output_sequence) as f:
         f.write("".join(sequence) + '\n')
