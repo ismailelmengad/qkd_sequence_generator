@@ -36,7 +36,7 @@ if __name__ == '__main__':
     parser.add_argument("--outplot", type=str, default="-", help="Plot file showing delays")
     parser.add_argument("-d1", "--delay1", type=int, default=0, help="Number of time bins to delay channel 1 by")
     parser.add_argument("-d2", "--delay2", type=int, default=0, help="Number of time bins to delay channel 2 by")
-    parser.add_argument("-d3", "--delay3", type=int, default=0, help="Number of time bins to delay channel 3 by")
+    parser.add_argument("-d3", "--delay3", type=int, default=58, help="Number of time bins to delay channel 3 by")
     parser.add_argument("-d4", "--delay4", type=int, default=0, help="Number of time bins to delay channel 4 by")
     parser.add_argument("-s", "--sample-rate", type=float, default=85.75, help="sample rate in GHz")
     parser.add_argument("--samples", type=int, default=255360, help="total number of samples")
@@ -44,7 +44,7 @@ if __name__ == '__main__':
     parser.add_argument("--output-sequence", default="-", help="output sequence file")
     parser.add_argument("-f", "--frequency", type=float, default=6.125, help="pulse repetition rate in GHz")
     parser.add_argument("-n", "--num-qubits", type=int, default=10, help="number of qubits")
-    parser.add_argument("--duty-cycle", type=float, default=0.5, help="fraction of pulse period that is high")
+    parser.add_argument("--duty-cycle", type=float, default=0.2, help="fraction of pulse period that is high")
     parser.add_argument("--plot", action='store_true', default=False, help="plot the waveforms")
     parser.add_argument("--time-basis-probability", type=float, default=0.9, help="probability to output a time basis qubit")
     parser.add_argument("--phase-levels", type=int, default=5, help="number of phase randomization levels")
@@ -110,12 +110,6 @@ if __name__ == '__main__':
     
     with smart_open(args.output) as f:
         f.write("SampleRate = %.3f GHz\n" % args.sample_rate)
-        f.write("Frequency = %f\n" % args.frequency)
-        f.write("%d Samples\n" % args.samples)
-        f.write("%d Qubits\n" % args.num_qubits)
-        f.write("Time basis probability %f\n" % args.time_basis_probability)
-        f.write("Phase levels %f\n" % args.phase_levels)
-        f.write("Phase scale %f\n" % args.phase_scale)
         for i in range(len(y1)):
             f.write(",".join(["%.18g" % x for x in [y1[i], y2[i], y3[i], y4[i]]]) + '\n')
         f.close()
@@ -124,12 +118,12 @@ if __name__ == '__main__':
         csv_file = csv.reader(f)
         line_counter=0
         for lines in csv_file:
-            if len(lines) == 4:
+            if (line_counter > 1) and (line_counter < args.samples):
                 y1[line_counter] = float(lines[0])
                 y2[line_counter] = float(lines[1])
                 y3[line_counter] = float(lines[2])
                 y4[line_counter] = float(lines[3])
-                line_counter += 1
+            line_counter += 1
 
     clock_start=min(args.delay3, args.delay4)
     start_index=max(args.delay1, args.delay2, args.delay3, args.delay4)
@@ -162,7 +156,6 @@ if __name__ == '__main__':
     
     time_bin_counter = 0
     for i in range(len(y5)):
-        #print("y5 element %d is %d\n" % (i, y5[i]))
         if (time_bin_counter % 15 == 0) and (y5[i] == 0):
             y5[i:i+7] += 1
             time_bin_counter += 1
@@ -190,42 +183,36 @@ if __name__ == '__main__':
     
     with smart_open(args.output) as f:
         f.write("SampleRate = %.3f GHz\n" % args.sample_rate)
-        f.write("Frequency = %f\n" % args.frequency)
-        f.write("%d Samples\n" % args.samples)
-        f.write("%d Qubits\n" % args.num_qubits)
-        f.write("Time basis probability %f\n" % args.time_basis_probability)
-        f.write("Phase levels %f\n" % args.phase_levels)
-        f.write("Phase scale %f\n" % args.phase_scale)
+        f.write("Y1,Y2,Y3,Y4\n")
         for i in range(len(y1)):
             f.write(",".join(["%.18g" % x for x in [y1[i], y2[i], early_channel[i], late_channel[i]]]) + '\n')
         f.close()    
     
-    with smart_open(args.outplot) as f:
-        print("Plotting %s\n" % f)
-        fig, ax = plt.subplots(4,1)
+    if args.plot:
+        with smart_open(args.outplot) as f:
+            print("Plotting %s\n" % f)
+            fig, ax = plt.subplots(4,1)
             
-        ax[0].plot(t[:140+start_index], clock_channel[:140+start_index])
-        ax[0].set_xlim(t[0],t[140+start_index])
-        ax[0].set_title('Channel 1 (Clock)')
-            
-        ax[1].plot(t[:140+start_index], phase_channel[:140+start_index])
-        ax[1].set_xlim(t[0],t[140+start_index])
-        ax[1].set_title('Channel 2 (Phase)')
-            
-        ax[2].plot(t[:140+start_index], early_channel[:140+start_index])
-        ax[2].set_xlim(t[0],t[140+start_index])
-        ax[2].set_title('Channel 3 (Early)')
-            
-        ax[3].plot(t[:140+start_index], late_channel[:140+start_index])
-        #ax[3].plot(t[:140+start_index], y5[:140+start_index], color='red', linestyle='dashed')
-        ax[3].set_xlim(t[0],t[140+start_index])
-        ax[3].set_title('Channel 4 (Late)')
-            
-        plt.subplots_adjust(top=0.8,
-                            bottom=0.2,
-                            hspace=2.2)
-            
-            
-        fig.savefig(args.outplot)
+            ax[0].plot(t[:200], clock_channel[:200])
+            ax[0].set_xlim(t[0],t[200])
+            ax[0].set_title('Channel 1 (Clock)')
+                
+            ax[1].plot(t[:200], phase_channel[:200])
+            ax[1].set_xlim(t[0],t[200])
+            ax[1].set_title('Channel 2 (Phase)')
+                
+            ax[2].plot(t[:200], early_channel[:200])
+            ax[2].set_xlim(t[0],t[200])
+            ax[2].set_title('Channel 3 (Early)')
+                
+            ax[3].plot(t[:200], late_channel[:200])
+            ax[3].set_xlim(t[0],t[200])
+            ax[3].set_title('Channel 4 (Late)')
+                
+            plt.subplots_adjust(top=0.8,
+                                bottom=0.2,
+                                hspace=2.2)
+               
+            fig.savefig(args.outplot)
 
             
